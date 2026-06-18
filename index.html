@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Travel Mode Decider V4</title>
+
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+  margin: 0;
+  padding: 16px;
+  padding-bottom: 60px;
+  background: #f2f4f7;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.card {
+  background: white;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+label {
+  margin-top: 14px;
+  display: block;
+  font-weight: 500;
+}
+
+select, input[type=number] {
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+.range-group {
+  margin-top: 10px;
+}
+
+.range-value {
+  text-align: right;
+  font-size: 13px;
+  color: #666;
+}
+
+input[type=range] {
+  width: 100%;
+  margin-top: 6px;
+  accent-color: #0078D4;
+}
+
+button {
+  width: 100%;
+  padding: 16px;
+  margin-top: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  background: #0078D4;
+  color: white;
+  border: none;
+  border-radius: 14px;
+}
+
+.result {
+  font-size: 22px;
+  text-align: center;
+  font-weight: bold;
+  margin-top: 12px;
+}
+
+.mode-card {
+  padding: 10px;
+  margin-top: 8px;
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+.breakdown {
+  font-size: 13px;
+  color: #555;
+  margin-top: 5px;
+}
+
+/* Footer */
+#version {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  color: #888;
+  background: rgba(255,255,255,0.95);
+  border-top: 1px solid #ddd;
+  padding: 6px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🚦 Travel Mode Decider</h1>
+
+<!-- ✅ Preferences FIRST -->
+<div class="card">
+<h3>Preferences</h3>
+
+<label>Behavior Profile</label>
+<select id="profile">
+  <option value="default">Default</option>
+  <option value="rush">In a Rush</option>
+  <option value="exercise">Exercise Mode</option>
+  <option value="lazy">Low Effort</option>
+</select>
+
+<label>Value of Time ($/hr)</label>
+<input id="valueTime" type="number" value="20" />
+
+<label>Fuel Cost ($/mile)</label>
+<input id="fuelCost" type="number" value="0.25" />
+
+<label>Parking Cost ($)</label>
+<input id="parkingCost" type="number" value="5" />
+
+<label>Exercise Value ($)</label>
+<input id="exerciseValue" type="number" value="5" />
+</div>
+
+<!-- ✅ Trip Inputs -->
+<div class="card">
+<h3>Trip Inputs</h3>
+
+<label>Distance (miles)</label>
+<div class="range-group">
+<input type="range" id="distance" min="0" max="20" step="0.5" value="3"
+oninput="updateVal('distance')">
+<div class="range-value"><span id="distance_val">3</span> miles</div>
+</div>
+
+<label>Adults</label>
+<div class="range-group">
+<input type="range" id="adults" min="0" max="5" value="1"
+oninput="updateVal('adults')">
+<div class="range-value"><span id="adults_val">1</span></div>
+</div>
+
+<label>Children</label>
+<div class="range-group">
+<input type="range" id="children" min="0" max="5" value="0"
+oninput="updateVal('children')">
+<div class="range-value"><span id="children_val">0</span></div>
+</div>
+
+<label>Weather</label>
+<select id="weather">
+  <option value="0">Clear</option>
+  <option value="5">Rain</option>
+  <option value="10">Heavy Rain</option>
+</select>
+
+<label>Traffic</label>
+<select id="traffic">
+  <option value="0">Light</option>
+  <option value="5">Moderate</option>
+  <option value="10">Heavy</option>
+</select>
+
+</div>
+
+<button onclick="calculate()">Calculate</button>
+
+<div class="card">
+<h3>Results</h3>
+<div id="results"></div>
+</div>
+
+<script>
+function val(id) {
+  return +document.getElementById(id).value;
+}
+
+function updateVal(id) {
+  document.getElementById(id + "_val").innerText =
+    document.getElementById(id).value;
+}
+
+function calculate() {
+
+  const d = val("distance");
+  const adults = val("adults");
+  const children = val("children");
+  const weather = val("weather");
+  const traffic = val("traffic");
+
+  let valueTime = val("valueTime");
+  let exerciseValue = val("exerciseValue");
+
+  const fuelCost = val("fuelCost");
+  const parkingCost = val("parkingCost");
+
+  const profile = document.getElementById("profile").value;
+
+  let exercisePref = 1;
+
+  if (profile === "rush") {
+    valueTime *= 2;
+    exercisePref = 0.5;
+  }
+
+  if (profile === "exercise") {
+    exerciseValue *= 2;
+    exercisePref = 1.5;
+  }
+
+  if (profile === "lazy") {
+    valueTime *= 1.2;
+    exercisePref = 0.2;
+  }
+
+  // ✅ SPEEDS (mph)
+  const speeds = {
+    drive: 25,
+    bike: 10,
+    walk: 3,
+    transit: 15
+  };
+
+  // ✅ Convert to minutes
+  function time(minSpeed) {
+    return (d / minSpeed) * 60;
+  }
+
+  function timeCost(minutes) {
+    return (minutes / 60) * valueTime;
+  }
+
+  const groupPenalty = Math.max(0, adults + children - 1) * 0.5;
+
+  const driveTime = time(speeds.drive);
+  const bikeTime = time(speeds.bike);
+  const walkTime = time(speeds.walk);
+  const transitTime = time(speeds.transit);
+
+  const drive = timeCost(driveTime) + (d * fuelCost) + parkingCost + traffic + (children * 0.5);
+  const bike = timeCost(bikeTime) + weather + (children * 6) + groupPenalty - (exerciseValue * exercisePref);
+  const walk = timeCost(walkTime) + weather + (children * 4) + groupPenalty - (exerciseValue * 1.5 * exercisePref);
+  const transit = timeCost(transitTime) + (traffic * 0.5) + (children * 2) + groupPenalty;
+
+  const modes = {
+    Drive: drive,
+    Bike: bike,
+    Walk: walk,
+    Transit: transit
+  };
+
+  let best = "", lowest = Infinity, html = "";
+
+  for (let m in modes) {
+    let c = modes[m];
+    html += `<div class="mode-card"><strong>${m}: $${c.toFixed(2)}</strong>
+      <div class="breakdown">Time: ${Math.round(eval(m.toLowerCase() + "Time"))} min</div>
+    </div>`;
+    if (c < lowest) { lowest = c; best = m; }
+  }
+
+  html += `<div class="result">✅ Best Option: ${best}</div>`;
+  document.getElementById("results").innerHTML = html;
+}
+</script>
+
+<div id="version">
+v4.0 — auto travel times + simplified inputs
+</div>
+
+</body>
+</html>
