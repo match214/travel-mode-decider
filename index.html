@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Travel Mode Decider V2</title>
+
+<style>
+body {
+  font-family: Arial;
+  margin: 0;
+  padding: 16px;
+  background: #f5f5f5;
+}
+h1 { text-align: center; }
+
+.card {
+  background: white;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+label { display: block; margin-top: 10px; }
+
+input, select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 16px;
+  font-size: 16px;
+  background: #0078D4;
+  color: white;
+  border: none;
+  border-radius: 10px;
+}
+
+.result {
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 12px;
+}
+
+.breakdown {
+  margin-top: 8px;
+  font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🚦 Travel Mode Decider</h1>
+
+<div class="card">
+<h3>Trip Inputs</h3>
+
+<label>Distance (miles)</label>
+<input id="distance" type="number" value="3" />
+
+<label>Drive Time (minutes)</label>
+<input id="driveTime" type="number" value="15" />
+
+<label>Bike Time (minutes)</label>
+<input id="bikeTime" type="number" value="20" />
+
+<label>Walk Time (minutes)</label>
+<input id="walkTime" type="number" value="40" />
+
+<label>Transit Time (minutes)</label>
+<input id="transitTime" type="number" value="25" />
+
+<label>Weather</label>
+<select id="weather">
+  <option value="0">Clear</option>
+  <option value="5">Rain</option>
+  <option value="10">Heavy Rain</option>
+</select>
+
+<label>Traffic</label>
+<select id="traffic">
+  <option value="0">Light</option>
+  <option value="5">Moderate</option>
+  <option value="10">Heavy</option>
+</select>
+
+</div>
+
+<div class="card">
+<h3>Context</h3>
+
+<label>In a Rush?</label>
+<select id="rush">
+  <option value="1">No</option>
+  <option value="1.5">Yes</option>
+</select>
+
+<label>Want Exercise?</label>
+<select id="exercisePref">
+  <option value="1">Neutral</option>
+  <option value="1.5">Yes</option>
+  <option value="0.5">Avoid</option>
+</select>
+
+</div>
+
+<div class="card">
+<h3>Preferences</h3>
+
+<label>Value of Time ($/hour)</label>
+<input id="valueTime" type="number" value="20" />
+
+<label>Fuel Cost ($/mile)</label>
+<input id="fuelCost" type="number" value="0.25" />
+
+<label>Parking Cost ($)</label>
+<input id="parkingCost" type="number" value="5" />
+
+<label>Exercise Value ($ benefit)</label>
+<input id="exerciseValue" type="number" value="5" />
+</div>
+
+<button onclick="calculate()">Calculate</button>
+
+<div class="card">
+<h3>Results</h3>
+<div id="results"></div>
+</div>
+
+<script>
+function calculate() {
+
+  const d = +distance.value;
+  const traffic = +document.getElementById("traffic").value;
+  const weather = +document.getElementById("weather").value;
+
+  const driveTime = +document.getElementById("driveTime").value;
+  const bikeTime = +document.getElementById("bikeTime").value;
+  const walkTime = +document.getElementById("walkTime").value;
+  const transitTime = +document.getElementById("transitTime").value;
+
+  const valueTime = +document.getElementById("valueTime").value;
+  const fuelCost = +document.getElementById("fuelCost").value;
+  const parkingCost = +document.getElementById("parkingCost").value;
+  const exerciseValue = +document.getElementById("exerciseValue").value;
+
+  const rush = +document.getElementById("rush").value;
+  const exercisePref = +document.getElementById("exercisePref").value;
+
+  function timeCost(minutes) {
+    return (minutes / 60) * valueTime * rush;
+  }
+
+  // COST FUNCTIONS
+
+  const driveCost =
+    timeCost(driveTime) +
+    (d * fuelCost) +
+    parkingCost +
+    traffic;
+
+  const bikeCost =
+    timeCost(bikeTime) +
+    weather -
+    (exerciseValue * exercisePref);
+
+  const walkCost =
+    timeCost(walkTime) +
+    weather -
+    (exerciseValue * 1.5 * exercisePref);
+
+  const transitCost =
+    timeCost(transitTime) +
+    (traffic * 0.5);
+
+  const modes = {
+    Drive: {
+      total: driveCost,
+      breakdown: `
+        Time: $${timeCost(driveTime).toFixed(2)}  
+        Fuel: $${(d * fuelCost).toFixed(2)}  
+        Parking: $${parkingCost.toFixed(2)}  
+        Traffic: $${traffic.toFixed(2)}
+      `
+    },
+    Bike: {
+      total: bikeCost,
+      breakdown: `
+        Time: $${timeCost(bikeTime).toFixed(2)}  
+        Weather: $${weather.toFixed(2)}  
+        Exercise Benefit: -$${(exerciseValue * exercisePref).toFixed(2)}
+      `
+    },
+    Walk: {
+      total: walkCost,
+      breakdown: `
+        Time: $${timeCost(walkTime).toFixed(2)}  
+        Weather: $${weather.toFixed(2)}  
+        Exercise Benefit: -$${(exerciseValue * 1.5 * exercisePref).toFixed(2)}
+      `
+    },
+    Transit: {
+      total: transitCost,
+      breakdown: `
+        Time: $${timeCost(transitTime).toFixed(2)}  
+        Traffic Delay: $${(traffic * 0.5).toFixed(2)}
+      `
+    }
+  };
+
+  let bestMode = null;
+  let lowest = Infinity;
+  let html = "";
+
+  for (let m in modes) {
+    const val = modes[m].total;
+    html += `<div><strong>${m}: $${val.toFixed(2)}</strong>
+      <div class="breakdown">${modes[m].breakdown}</div>
+    </div><hr/>`;
+
+    if (val < lowest) {
+      lowest = val;
+      bestMode = m;
+    }
+  }
+
+  html += `<div class="result">✅ Best Option: ${bestMode}</div>`;
+
+  document.getElementById("results").innerHTML = html;
+}
+</script>
+
+</body>
+</html>
