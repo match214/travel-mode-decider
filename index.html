@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Travel Mode Decider V3.1</title>
+<title>Travel Mode Decider V3.2</title>
 
 <style>
 body {
@@ -176,8 +176,8 @@ function calculate() {
   const fuelCost = val("fuelCost");
   const parkingCost = val("parkingCost");
 
-  const rush = val("rush");
-  const exercisePref = val("exercisePref");
+  let rush = 1;
+  let exercisePref = 1;
 
   const adults = val("adults");
   const children = val("children");
@@ -185,19 +185,21 @@ function calculate() {
   const profile = document.getElementById("profile").value;
 
   /* ✅ PROFILE MODIFIERS */
-  if (profile === "rush") {
-    valueTime *= 2;
-    exerciseValue *= 0.5;
-  }
+if (profile === "rush") {
+  valueTime *= 2;
+  exercisePref = 0.5;
+}
 
-  if (profile === "exercise") {
-    exerciseValue *= 2;
-  }
+if (profile === "exercise") {
+  exerciseValue *= 2;
+  exercisePref = 1.5;
+}
 
-  if (profile === "lazy") {
-    valueTime *= 1.2;
-    exerciseValue *= 0.2;
-  }
+if (profile === "lazy") {
+  valueTime *= 1.2;
+  exercisePref = 0.2;
+}
+
 
   function timeCost(minutes) {
     return (minutes / 60) * valueTime * rush;
@@ -272,7 +274,7 @@ function calculate() {
 </script>
 
 <div id="version">
-  v3.1 — bug fixes + stable UI
+  v3.2 — simplified profiles (removed context)
 </div>
 
 </body>
