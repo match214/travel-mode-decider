@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Travel Mode Decider V3</title>
+
+<style>
+body {
+  font-family: Arial;
+  margin: 0;
+  padding: 16px;
+  background: #f5f5f5;
+}
+
+h1 {
+  text-align: center;
+}
+
+.card {
+  background: white;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+input, select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 16px;
+  font-size: 16px;
+  background: #0078D4;
+  color: white;
+  border: none;
+  border-radius: 10px;
+}
+
+.result {
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 12px;
+}
+
+.breakdown {
+  margin-top: 8px;
+  font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🚦 Travel Mode Decider</h1>
+
+<div class="card">
+<h3>Behavior Profile</h3>
+
+<label>Profile</label>
+<select id="profile">
+  <option value="default">Default</option>
+  <option value="rush">In a Rush</option>
+  <option value="exercise">Exercise Mode</option>
+  <option value="lazy">Low Effort</option>
+</select>
+</div>
+
+<div class="card">
+<h3>Trip Inputs</h3>
+
+<label>Distance (miles)</label>
+<input id="distance" type="number" value="3" />
+
+<label>Drive Time (minutes)</label>
+<input id="driveTime" type="number" value="15" />
+
+<label>Bike Time (minutes)</label>
+<input id="bikeTime" type="number" value="20" />
+
+<label>Walk Time (minutes)</label>
+<input id="walkTime" type="number" value="40" />
+
+<label>Transit Time (minutes)</label>
+<input id="transitTime" type="number" value="25" />
+
+<label>Adults</label>
+<input id="adults" type="number" value="1" min="0" />
+
+<label>Small Children</label>
+<input id="children" type="number" value="0" min="0" />
+
+<label>Weather</label>
+<select id="weather">
+  <option value="0">Clear</option>
+  <option value="5">Rain</option>
+  <option value="10">Heavy Rain</option>
+</select>
+
+<label>Traffic</label>
+<select id="traffic">
+  <option value="0">Light</option>
+  <option value="5">Moderate</option>
+  <option value="10">Heavy</option>
+</select>
+
+</div>
+
+<div class="card">
+<h3>Context</h3>
+
+<label>In a Rush?</label>
+<select id="rush">
+  <option value="1">No</option>
+  <option value="1.5">Yes</option>
+</select>
+
+<label>Want Exercise?</label>
+<select id="exercisePref">
+  <option value="1">Neutral</option>
+  <option value="1.5">Yes</option>
+  <option value="0.5">Avoid</option>
+</select>
+
+</div>
+
+<div class="card">
+<h3>Preferences</h3>
+
+<label>Value of Time ($/hour)</label>
+<input id="valueTime" type="number" value="20" />
+
+<label>Fuel Cost ($/mile)</label>
+<input id="fuelCost" type="number" value="0.25" />
+
+<label>Parking Cost ($)</label>
+<input id="parkingCost" type="number" value="5" />
+
+<label>Exercise Value ($ benefit)</label>
+<input id="exerciseValue" type="number" value="5" />
+</div>
+
+<button onclick="calculate()">Calculate</button>
+
+<div class="card">
+<h3>Results</h3>
+<div id="results"></div>
+</div>
+
+<script>
+function calculate() {
+
+  const d = +distance.value;
+  const traffic = +document.getElementById("traffic").value;
+  const weather = +document.getElementById("weather").value;
+
+  const driveTime = +driveTime.value;
+  const bikeTime = +bikeTime.value;
+  const walkTime = +walkTime.value;
+  const transitTime = +transitTime.value;
+
+  let valueTime = +document.getElementById("valueTime").value;
+  let exerciseValue = +document.getElementById("exerciseValue").value;
+
+  const fuelCost = +document.getElementById("fuelCost").value;
+  const parkingCost = +document.getElementById("parkingCost").value;
+
+  const rush = +document.getElementById("rush").value;
+  const exercisePref = +document.getElementById("exercisePref").value;
+
+  const adults = +document.getElementById("adults").value;
+  const children = +document.getElementById("children").value;
+
+  const profile = document.getElementById("profile").value;
+
+  // PROFILE MODIFIERS
+  if (profile === "rush") {
+    valueTime *= 2;
+    exerciseValue *= 0.5;
+  }
+
+  if (profile === "exercise") {
+    exerciseValue *= 2;
+  }
+
+  if (profile === "lazy") {
+    valueTime *= 1.2;
+    exerciseValue *= 0.2;
+  }
+
+  function timeCost(minutes) {
+    return (minutes / 60) * valueTime * rush;
+  }
+
+  // GROUP EFFECTS
